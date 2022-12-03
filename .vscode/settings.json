@@ -3,6 +3,7 @@
     "*.awk": "awk",
     "*.heex": "phoenix-heex",
     "*.h": "cpp",
+    "*.ui": "xml",
     "__bit_reference": "cpp",
     "__bits": "cpp",
     "__config": "cpp",
@@ -93,6 +94,20 @@
     "cassert": "cpp",
     "ciso646": "cpp",
     "__functional_03": "cpp",
-    "filesystem": "cpp"
+    "filesystem": "cpp",
+    "__std_stream": "cpp",
+    "codecvt": "cpp",
+    "compare": "cpp",
+    "concepts": "cpp",
+    "coroutine": "cpp",
+    "numbers": "cpp",
+    "semaphore": "cpp",
+    "shared_mutex": "cpp",
+    "variant": "cpp",
+    "hash_map": "cpp",
+    "*.tcc": "cpp",
+    "memory_resource": "cpp",
+    "source_location": "cpp",
+    "stop_token": "cpp"
   }
 }
