@@ -13,6 +13,11 @@ void setFancyImguiStyle()
     ImGui::GetStyle().FrameRounding = 4.0f;
     ImGui::GetStyle().GrabRounding = 4.0f;
 
+    ImGui::GetStyle().FramePadding = ImVec2(6, 4);
+    ImGui::GetStyle().ItemSpacing = ImVec2(6, 2);
+    ImGui::GetStyle().ItemInnerSpacing = ImVec2(6, 4);
+    ImGui::GetStyle().IndentSpacing = 6.0f;
+
     ImVec4 *colors = ImGui::GetStyle().Colors;
     colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
     colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
@@ -71,7 +76,7 @@ sf::Color ImVec4toSFColor(ImVec4 color)
 
 int main()
 {
-    // macbookpro 13" width and height
+
     unsigned int width = 2560;
     unsigned int height = 1600;
     sf::RenderWindow window{sf::VideoMode(width, height), "ImGui SFML", sf::Style::Default};
@@ -89,6 +94,9 @@ int main()
         std::cerr << "No luck\n";
     }
 
+    // increase the font size
+    io.FontGlobalScale = 1.5f;
+
     setFancyImguiStyle();
 
     sf::Clock deltaClock{};
@@ -99,9 +107,19 @@ int main()
         {
             ImGui::SFML::ProcessEvent(window, event);
 
-            if (event.type == sf::Event::Closed)
+            switch (event.type)
             {
+            case sf::Event::Closed:
                 window.close();
+                break;
+            case sf::Event::KeyPressed:
+                if (event.key.code == sf::Keyboard::Escape)
+                {
+                    window.close();
+                }
+                break;
+            default:
+                break;
             }
         }
 
