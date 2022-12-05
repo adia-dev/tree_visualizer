@@ -12,15 +12,25 @@ namespace TreeVisualizer
 
         _window = new sf::RenderWindow(sf::VideoMode(width, height), "Tree Visualizer", sf::Style::Default);
         _window->setFramerateLimit(60);
+        _window->setVerticalSyncEnabled(true);
 
-        ImGui::SFML::Init(*_window);
+        _view = sf::View(sf::FloatRect(0, 0, width, height));
+        _view.setCenter(width / 2, height / 2);
+        _window->setView(_view);
+
+        if (!ImGui::SFML::Init(*_window))
+        {
+            std::cout << "Error initializing ImGui-SFML" << std::endl;
+            exit(1);
+        }
 
         auto &io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.IniFilename = "/Users/abdoulayedia/Projects/Dev/C++/tree_visualizer/src/config/imgui.ini";
 
         _imguiFont = io.Fonts->AddFontFromFileTTF(
             "/Users/abdoulayedia/Projects/Dev/C++/sfml_imgui/src/assets/fonts/Poppins/Poppins-Regular.ttf", 20);
+        _font.loadFromFile("/Users/abdoulayedia/Projects/Dev/C++/sfml_imgui/src/assets/fonts/Poppins/Poppins-Regular.ttf");
 
         if (!ImGui::SFML::UpdateFontTexture())
         {
@@ -34,6 +44,8 @@ namespace TreeVisualizer
         _shape.setPointCount(50);
 
         setFancyImguiStyle();
+
+        InitTree();
     }
 
     Window::~Window()
@@ -116,6 +128,30 @@ namespace TreeVisualizer
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
     }
 
+    void Window::InitTree()
+    {
+        // init binary tree of height 4
+        std::vector<std::string> treeVec = {
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "Hello"};
+
+        _root = TreeNode::FromVector(treeVec);
+        // _root = TreeNode::CombinaisonTree("Homer");
+
+        // DFS to add nodes to the vector
+        std::stack<std::shared_ptr<TreeNode>> stack;
+        stack.push(_root);
+        while (!stack.empty())
+        {
+            auto node = stack.top();
+            stack.pop();
+            _nodes.push_back(node);
+            if (node->right)
+                stack.push(node->right);
+            if (node->left)
+                stack.push(node->left);
+        }
+    }
+
     void Window::HandleEvents()
     {
         if (_window == nullptr)
@@ -132,10 +168,67 @@ namespace TreeVisualizer
                 _window->close();
                 break;
             case sf::Event::KeyPressed:
-                if (event.key.code == sf::Keyboard::Escape)
+                switch (event.key.code)
                 {
+
+                case sf::Keyboard::Escape:
                     _window->close();
+                    break;
+                // left right top to move _selectedNode
+                case sf::Keyboard::Left:
+                    if (_selectedNode != nullptr && _selectedNode->left)
+                        _selectedNode = _selectedNode->left;
+                    break;
+                case sf::Keyboard::Right:
+                    if (_selectedNode != nullptr && _selectedNode->right)
+                        _selectedNode = _selectedNode->right;
+                    break;
+                case sf::Keyboard::Up:
+                    if (_selectedNode != nullptr && _selectedNode->parent)
+                        _selectedNode = _selectedNode->parent;
+                    break;
+                // space to add a child
+                case sf::Keyboard::Space:
+                    if (_selectedNode != nullptr && _selectedNode->left == nullptr)
+                    {
+                        _selectedNode->left = std::make_shared<TreeNode>("New");
+                        _selectedNode->left->parent = _selectedNode;
+                        _nodes.push_back(_selectedNode->left);
+                    }
+                    else if (_selectedNode != nullptr && _selectedNode->right == nullptr)
+                    {
+                        _selectedNode->right = std::make_shared<TreeNode>("New");
+                        _selectedNode->right->parent = _selectedNode;
+                        _nodes.push_back(_selectedNode->right);
+                    }
+                    break;
+                case sf::Keyboard::BackSpace:
+                    if (_selectedNode != nullptr)
+                    {
+                        // remove from vector
+                        _nodes.erase(std::remove(_nodes.begin(), _nodes.end(), _selectedNode), _nodes.end());
+                        // remove from tree
+                        if (_selectedNode->parent != nullptr)
+                        {
+                            if (_selectedNode->parent->left == _selectedNode)
+                                _selectedNode->parent->left = nullptr;
+                            else if (_selectedNode->parent->right == _selectedNode)
+                                _selectedNode->parent->right = nullptr;
+                        }
+                        else
+                        {
+                            _root = nullptr;
+                        }
+                        _selectedNode = nullptr;
+                    }
+
+                    break;
+                default:
+                    break;
                 }
+                break;
+            case sf::Event::Resized:
+                _window->setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
                 break;
             default:
                 break;
@@ -145,55 +238,175 @@ namespace TreeVisualizer
 
     void Window::Update()
     {
+        if (_window == nullptr)
+            return;
+
+        ImGui::SFML::Update(*_window, _clock.restart());
     }
 
     void Window::Render()
     {
-        ImGui::SFML::Update(*_window, _clock.restart());
-
-        static ImVec4 circleColor{1.0f, 0.0f, 1.0f, 0.5f};
-        static float circleRadius = 100.f;
-        static std::size_t circlePoints = 30;
-
-        _shape.setFillColor(ImVec4toSFColor(circleColor));
-
-        static ImVec2 viewportSize{500, 500};
-        sf::RenderTexture rt{};
-        rt.create(viewportSize.x, viewportSize.y);
-
-        rt.clear(sf::Color::Black);
-        rt.draw(_shape);
+        if (_window == nullptr)
+            return;
 
         ImGui::PushFont(_imguiFont);
         ImGui::DockSpaceOverViewport();
 
-        ImGui::ShowDemoWindow();
-        ShowExampleAppMainMenuBar();
+        // viewport full window width and height
+        ImVec2 viewportSize = ImVec2(_window->getSize().x, _window->getSize().y);
 
-        if (ImGui::Begin("Circle manipulator"))
+        sf::RenderTexture rt{};
+        rt.create(viewportSize.x, viewportSize.y, sf::ContextSettings{0, 0, 0, 3, 0});
+
+        rt.clear(sf::Color(33, 33, 33));
+        rt.draw(_shape);
+
+        static uint16_t nodeSize = 20;
+        static uint16_t treeWidth = viewportSize.x / 2.f;
+        static ImVec2 nodeMargin = {10, 100};
+        static float nodeRadius = 25;
+        static ImVec2 treePos = {viewportSize.x / 2, viewportSize.y / 2.f};
+
+        if (ImGui::Begin("Tree Settings"))
         {
-            ImGuiColorEditFlags flags = ImGuiColorEditFlags_AlphaBar;
-            ImGui::ColorPicker4("Circle Color", (float *)&circleColor, flags, nullptr);
 
-            if (ImGui::DragFloat("Circle Radius", &circleRadius))
+            ImGui::SliderInt("Size", (int *)&nodeSize, 1, 100);
+            ImGui::SliderFloat2("Margin", (float *)&nodeMargin, 1, 200);
+            ImGui::SliderFloat("Radius", &nodeRadius, 1, 100);
+            ImGui::SliderInt("Width", (int *)&treeWidth, 1, 1000);
+            ImGui::SliderFloat2("Position", (float *)&treePos, 0, viewportSize.x);
+        }
+        ImGui::End();
+
+        if (ImGui::Begin("Node Settings"))
+        {
+            // print all the values of the _nodes vector
+            for (auto &node : _nodes)
             {
-                _shape.setRadius(circleRadius);
-            }
-            if (ImGui::DragInt("Circle Points", (int *)&circlePoints, 1.0f, 3, 500))
-            {
-                _shape.setPointCount(circlePoints);
+                // filled width button
+                ImGui::PushID(node->content.c_str());
+                if (ImGui::Button(("Node " + node->content).c_str(), ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
+                {
+                    _selectedNode = node;
+                }
+                ImGui::PopID();
             }
         }
         ImGui::End();
 
+        ImGui::ShowDemoWindow();
+        ShowExampleAppMainMenuBar();
+
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
-        if (ImGui::Begin("Viewport"))
+        // make the viewport not resizable nor scrollable
+        if (ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize))
         {
             viewportSize = ImGui::GetWindowSize();
+
+            _mousePos = sf::Vector2f(ImGui::GetMousePos().x - ImGui::GetWindowPos().x, ImGui::GetMousePos().y - ImGui::GetWindowPos().y * 2);
+
+            for (int i = 0; i < viewportSize.x; i += 100)
+            {
+                for (int j = 0; j < viewportSize.y; j += 100)
+                {
+                    sf::RectangleShape rect{{100, 100}};
+                    rect.setPosition(i, j);
+                    rect.setFillColor(sf::Color(255, 255, 255, 25));
+                    rect.setOutlineThickness(1);
+                    rect.setOutlineColor(sf::Color(100, 100, 100, 50));
+                    rt.draw(rect);
+                }
+            }
+
+            for (auto &node : _nodes)
+            {
+                node->GetShape().setFillColor(sf::Color::White);
+                node->Update(_mousePos);
+            }
+
+            if (_selectedNode)
+            {
+                // floating info window on the node
+                ImGui::SetNextWindowPos(ImVec2(_selectedNode->GetShape().getPosition().x + nodeRadius, _selectedNode->GetShape().getPosition().y + nodeRadius));
+                ImGui::SetNextWindowSize(ImVec2(400, 200));
+                ImGui::Begin("Node Info", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse);
+                ImGui::Text("Node %s", _selectedNode->content.c_str());
+                // input text for the node content that updates the node content
+                static char buffer[256];
+                if (ImGui::InputText("Content", buffer, 256))
+                {
+                    _selectedNode->content = buffer;
+                }
+
+                // parent
+                ImGui::PushID("Parent");
+                if (ImGui::Button("Parent", ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
+                {
+                    _selectedNode = _selectedNode->parent;
+                }
+                ImGui::PopID();
+
+                // siblings
+                ImGui::Text("Siblings: ");
+                ImGui::SameLine();
+                // button that select the sibling
+                if (_selectedNode->left)
+                {
+                    ImGui::PushID(_selectedNode->left->content.c_str());
+                    if (ImGui::Button(_selectedNode->left->content.c_str()))
+                    {
+                        _selectedNode = _selectedNode->left;
+                    }
+                    ImGui::PopID();
+                }
+
+                ImGui::SameLine();
+                if (_selectedNode->right)
+                {
+                    ImGui::PushID(_selectedNode->right->content.c_str());
+                    if (ImGui::Button(_selectedNode->right->content.c_str()))
+                    {
+                        _selectedNode = _selectedNode->right;
+                    }
+                    ImGui::PopID();
+                }
+
+                // two buttons to rotate the tree left and right
+                ImGui::PushID("Rotate Left");
+                if (ImGui::Button("Rotate Left", ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
+                {
+                    _selectedNode->RotateLeft();
+                }
+                ImGui::PopID();
+
+                ImGui::PushID("Rotate Right");
+                if (ImGui::Button("Rotate Right", ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
+                {
+                    _selectedNode->RotateRight();
+                }
+                ImGui::PopID();
+
+                // draw the path from the root to the current node
+                std::shared_ptr<TreeNode> node = _selectedNode;
+                while (node)
+                {
+                    node->GetShape().setOutlineThickness(2);
+                    node->GetShape().setFillColor(sf::Color::Green);
+
+                    node = node->parent;
+                }
+
+                ImGui::End();
+            }
+
+            if (_root)
+                _root->Render(rt, {treePos.x, treePos.y}, _root->GetHeight(), 0, {nodeMargin.x, nodeMargin.y}, nodeRadius, &_font);
+
             ImGui::Image(rt);
         }
         ImGui::End();
         ImGui::PopStyleVar();
+
         ImGui::PopFont();
 
         _window->clear();

@@ -3,21 +3,7 @@
 //
 #pragma once
 
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <algorithm>
-#include <queue>
-
-#include "imgui.h"
-#include "imgui-SFML.h"
-
-#include <SFML/Graphics.hpp>
-#include <SFML/System/Clock.hpp>
-#include <SFML/Window/Event.hpp>
+#include "../tree/TreeNode.h"
 
 namespace TreeVisualizer
 {
@@ -32,13 +18,28 @@ namespace TreeVisualizer
 
 	private:
 		sf::RenderWindow *_window = nullptr;
+		sf::View _view;
 		sf::Clock _clock;
 		sf::Font _font;
 		ImFont *_imguiFont = nullptr;
 		sf::CircleShape _shape;
+		sf::Vector2f _mousePos;
+
+		// handle moving the view
+		bool _isMovingView = false;
+		sf::Vector2f _viewPos;
+		sf::Vector2f _mousePosView;
+
+		std::vector<std::shared_ptr<TreeNode>> _nodes;
+
+		std::shared_ptr<TreeNode> _root = nullptr;
+		std::shared_ptr<TreeNode> _selectedNode = nullptr;
 
 		// ImGui Window init
 		void setFancyImguiStyle();
+
+		// Init Tree
+		void InitTree();
 
 		// Main loop
 		void HandleEvents();
