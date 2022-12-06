@@ -90,7 +90,7 @@ dkms.conf
 .DS_Store
 
 #Playground
-*/playground
+playground
 
 ### VisualStudioCode ###
 .vscode/*
