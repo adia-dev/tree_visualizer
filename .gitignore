@@ -89,6 +89,9 @@ dkms.conf
 */cmake_install.cmake
 .DS_Store
 
+#Playground
+*/playground
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/tasks.json
