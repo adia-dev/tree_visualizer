@@ -1,4 +1,4 @@
-#include "window/Window.h"
+#include "application/Application.h"
 
 /*
     class names ideas for this project
@@ -17,9 +17,5 @@
 
 int main()
 {
-    TreeVisualizer::Window window;
-
-    window.Play();
-
-    return 0;
+    return TreeVisualizer::Application::Get().Play();
 }
