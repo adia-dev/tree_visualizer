@@ -10,7 +10,7 @@ namespace TreeVisualizer
         constexpr unsigned int width = 2560;
         constexpr unsigned int height = 1600;
 
-        _window = new sf::RenderWindow(sf::VideoMode(width, height), "Tree Visualizer", sf::Style::Default);
+        _window = new sf::RenderWindow(sf::VideoMode(width, height), "Tree Visualizer", sf::Style::Default, sf::ContextSettings(0, 0, 8));
         _window->setFramerateLimit(60);
         _window->setVerticalSyncEnabled(true);
 
@@ -51,6 +51,9 @@ namespace TreeVisualizer
     Window::~Window()
     {
         ImGui::SFML::Shutdown();
+        // clear the nodes
+        // print the reference count of the nodes
+        _nodes.clear();
     }
 
     void Window::Play()
@@ -131,10 +134,14 @@ namespace TreeVisualizer
     void Window::InitTree()
     {
         // init binary tree of height 4
-        std::vector<std::string> treeVec = {
-            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "Hello"};
+        // std::vector<std::string> treeVec = {
+        //     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "Hello"};
 
-        _root = TreeNode::FromVector(treeVec);
+        // std::vector<std::string> vec = {""};
+        // std::vector<std::string> combinaisons = TreeNode::WordCombinations("ABC_CBA", vec);
+        _root = TreeNode::FromVector(TreeNode::WordCombinations("abcd"));
+        // print reference count of root
+        std::cout << "ref count of root: " << _root.use_count() << std::endl;
         // _root = TreeNode::CombinaisonTree("Homer");
 
         // DFS to add nodes to the vector
@@ -252,56 +259,40 @@ namespace TreeVisualizer
         ImGui::PushFont(_imguiFont);
         ImGui::DockSpaceOverViewport();
 
+        ImGui::ShowDemoWindow();
+        MenuBar();
+
         // viewport full window width and height
         ImVec2 viewportSize = ImVec2(_window->getSize().x, _window->getSize().y);
 
-        sf::RenderTexture rt{};
-        rt.create(viewportSize.x, viewportSize.y, sf::ContextSettings{0, 0, 0, 3, 0});
-
-        rt.clear(sf::Color(33, 33, 33));
-        rt.draw(_shape);
-
         static uint16_t nodeSize = 20;
         static uint16_t treeWidth = viewportSize.x / 2.f;
-        static ImVec2 nodeMargin = {10, 100};
+        static ImVec2 nodeMargin = {1, 100};
         static float nodeRadius = 25;
         static ImVec2 treePos = {viewportSize.x / 2, viewportSize.y / 2.f};
 
-        if (ImGui::Begin("Tree Settings"))
-        {
-
-            ImGui::SliderInt("Size", (int *)&nodeSize, 1, 100);
-            ImGui::SliderFloat2("Margin", (float *)&nodeMargin, 1, 200);
-            ImGui::SliderFloat("Radius", &nodeRadius, 1, 100);
-            ImGui::SliderInt("Width", (int *)&treeWidth, 1, 1000);
-            ImGui::SliderFloat2("Position", (float *)&treePos, 0, viewportSize.x);
-        }
-        ImGui::End();
-
-        if (ImGui::Begin("Node Settings"))
-        {
-            // print all the values of the _nodes vector
-            for (auto &node : _nodes)
-            {
-                // filled width button
-                ImGui::PushID(node->content.c_str());
-                if (ImGui::Button(("Node " + node->content).c_str(), ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
-                {
-                    _selectedNode = node;
-                }
-                ImGui::PopID();
-            }
-        }
-        ImGui::End();
-
-        ImGui::ShowDemoWindow();
-        ShowExampleAppMainMenuBar();
+        sf::RenderTexture rt{};
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
         // make the viewport not resizable nor scrollable
         if (ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize))
         {
             viewportSize = ImGui::GetWindowSize();
+            rt.create(viewportSize.x, viewportSize.y, sf::ContextSettings{0, 0, 0, 3, 0});
+            treePos = {viewportSize.x / 2, viewportSize.y / 2.f - _root->GetHeight() * nodeRadius};
+
+            // text info about the viewport, cursor position, etc in a corner of the viewport
+            if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoResize))
+            {
+                ImGui::Text("Cursor position: (%.1f, %.1f)", ImGui::GetMousePos().x, ImGui::GetMousePos().y);
+                ImGui::Text("Viewport size: (%.1f, %.1f)", viewportSize.x, viewportSize.y);
+                ImGui::Text("Tree size: (%.1f, %.1f)", treeWidth, viewportSize.y);
+                ImGui::Text("Node size: (%.1f, %.1f)", nodeSize, nodeSize);
+                ImGui::Text("Node margin: (%.1f, %.1f)", nodeMargin.x, nodeMargin.y);
+                ImGui::Text("Node radius: %.1f", nodeRadius);
+                ImGui::Text("Tree position: (%.1f, %.1f)", treePos.x, treePos.y);
+                ImGui::End();
+            }
 
             _mousePos = sf::Vector2f(ImGui::GetMousePos().x - ImGui::GetWindowPos().x, ImGui::GetMousePos().y - ImGui::GetWindowPos().y * 2);
 
@@ -328,7 +319,7 @@ namespace TreeVisualizer
             {
                 // floating info window on the node
                 ImGui::SetNextWindowPos(ImVec2(_selectedNode->GetShape().getPosition().x + nodeRadius, _selectedNode->GetShape().getPosition().y + nodeRadius));
-                ImGui::SetNextWindowSize(ImVec2(400, 200));
+                ImGui::SetNextWindowSize(ImVec2(400, 350));
                 ImGui::Begin("Node Info", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse);
                 ImGui::Text("Node %s", _selectedNode->content.c_str());
                 // input text for the node content that updates the node content
@@ -347,7 +338,7 @@ namespace TreeVisualizer
                 ImGui::PopID();
 
                 // siblings
-                ImGui::Text("Siblings: ");
+                ImGui::Text("Childrens: ");
                 ImGui::SameLine();
                 // button that select the sibling
                 if (_selectedNode->left)
@@ -399,6 +390,8 @@ namespace TreeVisualizer
                 ImGui::End();
             }
 
+            rt.clear(sf::Color(33, 33, 33));
+
             if (_root)
                 _root->Render(rt, {treePos.x, treePos.y}, _root->GetHeight(), 0, {nodeMargin.x, nodeMargin.y}, nodeRadius, &_font);
 
@@ -407,11 +400,42 @@ namespace TreeVisualizer
         ImGui::End();
         ImGui::PopStyleVar();
 
+        if (ImGui::Begin("Tree Settings"))
+        {
+
+            ImGui::SliderInt("Size", (int *)&nodeSize, 1, 100);
+            ImGui::SliderFloat2("Margin", (float *)&nodeMargin, 1, 200);
+            ImGui::SliderFloat("Radius", &nodeRadius, 1, 100);
+            ImGui::SliderInt("Width", (int *)&treeWidth, 1, 1000);
+            ImGui::SliderFloat2("Position", (float *)&treePos, 0, viewportSize.x);
+        }
+        ImGui::End();
+
+        if (ImGui::Begin("Node Settings"))
+        {
+            // print all the values of the _nodes vector
+            for (auto &node : _nodes)
+            {
+                // filled width button
+                ImGui::PushID(node->content.c_str());
+                if (ImGui::Button((node->content).c_str(), ImVec2(ImGui::GetWindowContentRegionWidth(), 0)))
+                {
+                    _selectedNode = node;
+                }
+                ImGui::PopID();
+            }
+        }
+        ImGui::End();
+
         ImGui::PopFont();
 
+        SFMLRender();
+    }
+
+    void Window::SFMLRender()
+    {
         _window->clear();
         _window->draw(_shape);
-
         ImGui::SFML::Render(*_window);
         _window->display();
     }

@@ -23,7 +23,7 @@
 namespace TreeVisualizer
 {
 	// TreeNode
-	struct TreeNode : public std::enable_shared_from_this<TreeNode>
+	struct TreeNode // : public std::enable_shared_from_this<TreeNode>
 	{
 		TreeNode();
 		TreeNode(const std::string &content);
@@ -36,6 +36,8 @@ namespace TreeVisualizer
 
 		static std::shared_ptr<TreeNode> FromVector(const std::vector<std::string> &vec);
 		static std::shared_ptr<TreeNode> CombinaisonTree(const std::string &word);
+		static std::vector<std::string> WordCombinations(std::string str);
+		static std::vector<std::string> WordCombinations(std::string str, std::vector<std::string> vec);
 
 		uint16_t GetHeight() const
 		{
@@ -60,6 +62,7 @@ namespace TreeVisualizer
 
 		void Update(const sf::Vector2f &mousePos);
 		void Render(sf::RenderTarget &target, sf::Vector2f pos, int height, int depth, sf::Vector2f margin, float radius, sf::Font *font = nullptr);
+		void Render(sf::RenderTarget &target, sf::Vector2f pos, int width, int height, int depth, sf::Vector2f margin, float radius, sf::Font *font = nullptr);
 
 		std::string content;
 		std::shared_ptr<TreeNode> left = nullptr;

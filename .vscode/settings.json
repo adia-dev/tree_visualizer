@@ -109,5 +109,10 @@
     "memory_resource": "cpp",
     "source_location": "cpp",
     "stop_token": "cpp"
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#112671",
+    "titleBar.activeBackground": "#17359E",
+    "titleBar.activeForeground": "#F9FAFE"
   }
 }

@@ -26,26 +26,25 @@ namespace TreeVisualizer
     std::shared_ptr<TreeNode> TreeNode::FromVector(const std::vector<std::string> &vec)
     {
         std::shared_ptr<TreeNode> root = std::make_shared<TreeNode>(vec[0]);
-        std::queue<std::shared_ptr<TreeNode>> q;
-        q.push(root);
-
+        // to avoid the shared_ptr not being deleted properly, use a queue of weak_ptr instead, add the content of the queue to the tree, and then clear the queue
+        std::queue<std::weak_ptr<TreeNode>> queue;
+        queue.push(root);
         for (int i = 1; i < vec.size(); i += 2)
         {
-            std::shared_ptr<TreeNode> node = q.front();
-            q.pop();
-
+            std::shared_ptr<TreeNode> node = queue.front().lock();
+            // print the reference count of the shared_ptr
+            queue.pop();
             if (vec[i] != "")
             {
                 node->left = std::make_shared<TreeNode>(vec[i]);
                 node->left->parent = node;
-                q.push(node->left);
+                queue.push(node->left);
             }
-
             if (i + 1 < vec.size() && vec[i + 1] != "")
             {
                 node->right = std::make_shared<TreeNode>(vec[i + 1]);
                 node->right->parent = node;
-                q.push(node->right);
+                queue.push(node->right);
             }
         }
 
@@ -90,20 +89,48 @@ namespace TreeVisualizer
         return root;
     }
 
+    std::vector<std::string> TreeNode::WordCombinations(std::string str, std::vector<std::string> vec)
+    {
+        if (str.size() == 0)
+        {
+            return vec;
+        }
+        std::vector<std::string> newVec;
+        for (auto s : vec)
+        {
+            newVec.push_back(s + str[0]);
+            newVec.push_back(s);
+        }
+        str.erase(0, 1);
+        return WordCombinations(str, newVec);
+    }
+
+    std::vector<std::string> TreeNode::WordCombinations(std::string str)
+    {
+        static std::vector<std::string> vec = {""};
+
+        if (str.size() == 0)
+        {
+            return vec;
+        }
+        std::vector<std::string> newVec;
+        for (auto s : vec)
+        {
+            newVec.push_back(s + str[0]);
+            newVec.push_back(s);
+        }
+        str.erase(0, 1);
+        return WordCombinations(str, newVec);
+    }
+
     std::shared_ptr<TreeNode> TreeNode::RotateLeft()
     {
-        std::shared_ptr<TreeNode> newRoot = right;
-        right = newRoot->left;
-        newRoot->left = shared_from_this();
-        return newRoot;
+        return nullptr;
     }
 
     std::shared_ptr<TreeNode> TreeNode::RotateRight()
     {
-        std::shared_ptr<TreeNode> newRoot = left;
-        left = newRoot->right;
-        newRoot->right = shared_from_this();
-        return newRoot;
+        return nullptr;
     }
 
     void TreeNode::Update(const sf::Vector2f &mousePos)
@@ -129,8 +156,13 @@ namespace TreeVisualizer
     void TreeNode::Render(sf::RenderTarget &target, sf::Vector2f pos, int height, int depth, sf::Vector2f margin, float radius, sf::Font *font)
     {
 
-        uint16_t width = (uint16_t)(std::pow(2, (height + 1) / 2) * margin.x);
+        uint16_t width = (uint16_t)(std::pow(4, (height + 1) / 2) * margin.x * 2);
+        // calculate the radius so that the circle fits in the margin
+        Render(target, pos, width, height, depth, margin, radius, font);
+    }
 
+    void TreeNode::Render(sf::RenderTarget &target, sf::Vector2f pos, int width, int height, int depth, sf::Vector2f margin, float radius, sf::Font *font)
+    {
         if (left != nullptr)
         {
             sf::Vector2f leftPos = pos;
@@ -144,7 +176,7 @@ namespace TreeVisualizer
 
             target.draw(line, 2, sf::Lines);
 
-            left->Render(target, leftPos, height - 1, depth + 1, margin, radius, font);
+            left->Render(target, leftPos, width / 2, height, depth + 1, margin, radius, font);
         }
 
         if (right != nullptr)
@@ -160,10 +192,10 @@ namespace TreeVisualizer
 
             target.draw(line, 2, sf::Lines);
 
-            right->Render(target, rightPos, height - 1, depth + 1, margin, radius, font);
+            right->Render(target, rightPos, width / 2, height, depth + 1, margin, radius, font);
         }
         // the radius is calculated based on the content of the node, it is a string
-        shape.setRadius(radius + content.length() * 2);
+        shape.setRadius(radius + content.length() * 4);
         shape.setPosition(pos);
         shape.setOrigin(radius, radius);
 

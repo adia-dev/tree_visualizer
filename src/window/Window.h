@@ -46,6 +46,7 @@ namespace TreeVisualizer
 		// void HandleInputs();
 		void Update();
 		void Render();
+		void SFMLRender();
 
 		// TEMP utils, this will be moved later on a different file/class probably
 		sf::Color ImVec4toSFColor(ImVec4 color)
@@ -53,7 +54,7 @@ namespace TreeVisualizer
 			return sf::Color(color.x * 255, color.y * 255, color.z * 255, color.w * 255);
 		}
 
-		static void ShowExampleAppMainMenuBar()
+		void MenuBar()
 		{
 			if (ImGui::BeginMainMenuBar())
 			{
@@ -74,6 +75,10 @@ namespace TreeVisualizer
 					}
 					if (ImGui::MenuItem("Paste", "CTRL+V"))
 					{
+					}
+					if (ImGui::MenuItem("Quit", "CTRL+Q"))
+					{
+						this->_window->close();
 					}
 					ImGui::EndMenu();
 				}
@@ -125,7 +130,7 @@ namespace TreeVisualizer
 			}
 		}
 
-		static void HelpMarker(const char *desc)
+		void HelpMarker(const char *desc)
 		{
 			ImGui::TextDisabled("(?)");
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
